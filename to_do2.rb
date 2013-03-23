@@ -9,14 +9,14 @@ class CsvParser
   def save!(tasks)
     CSV.open(file, 'wb') do |csv|
       tasks.each do |task|
-        csv.add_row([task.id,task.command,task.completed,task.tags])
+        csv.add_row([task.id,task.command,task.completed,task.tags,task.time])
       end
     end
   end
 
   def each
     CSV.foreach(file) do |row|
-      yield(Tasks.new(row[0].to_i, row[1], row[2], row[3]))
+      yield(Tasks.new(row[0].to_i, row[1], row[2], row[3], row[4]))
     end
   end
 
@@ -45,12 +45,14 @@ end
 
 class Tasks
   attr_reader :id, :command, :completed, :tags
+  attr_accessor :time
 
-  def initialize(id, command, completed, tags=' ')
+  def initialize(id, command, completed, tags=' ', time)
     @id = id
     @command = command
     @completed = completed
     @tags = tags
+    @time = time
   end
 
   def complete!
@@ -83,7 +85,7 @@ class ToDo
 
       id = @tasks.size + 1
       command = to_do.name
-      task = Tasks.new(id, command, "false", '')
+      task = Tasks.new(id, command, "false", '', Time.now.asctime)
       @tasks << task
 
       puts "#{to_do.name} with index: #{id} has been added to your TODO list"
@@ -94,19 +96,22 @@ class ToDo
       task = find(id)
       task = task.shift
       task.complete!
-      puts "Congrats! #{task.command} is now checked off your list!"
+      task.time = Time.now.asctime
+      puts "Congrats! #{task.command} at #{task.time} is now checked off your list!"
 
     when "LIST"
+      sorted_tasks = @tasks.sort_by { |task| task.time }.reverse!
 
-      @tasks.each do |task|
+      sorted_tasks.each do |task|
         check_box = "[ ]" 
         check_box = "[x]" if task.completed == "true"
-        puts "#{task.id}. #{check_box} #{task.command} #{task.tags}" 
+        puts "#{task.id}. #{check_box} #{task.command} #{task.tags} #{task.time}" 
       end
 
     when "LIST:OUTSTANDING"
-      # sort by creation date
-      @tasks.each do |task|
+  
+      sorted_tasks = @tasks.sort_by { |task| task.time }.reverse!
+      sorted_tasks.each do |task|
         check_box = "[]"
         if task.completed == "false"
           puts "#{task.id}. #{check_box} #{task.command}"
@@ -114,12 +119,13 @@ class ToDo
       end
 
     when "LIST:COMPLETED"
-      # sort by completion date, most recent at top
-      @tasks.each do |task|
+      
+      sorted_tasks = @tasks.sort_by { |task| task.time }.reverse!
+      sorted_tasks.each do |task|
 
         check_box = "[x]"
         if task.completed == "true"
-          puts "#{task.id}. #{check_box} #{task.command}"
+          puts "#{task.id}. #{check_box} #{task.command} #{Time.now.asctime}"
         end
       end
 
